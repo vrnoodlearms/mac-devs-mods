@@ -1,0 +1,44 @@
+name: Publish Mac Devs Mods
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency:
+  group: mac-devs-mods-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Extract website source
+        run: python3 -m zipfile -e Mac-Devs-Mods-Website.zip source
+      - name: Publish mod downloads
+        run: node source/scripts/publish-releases.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Build website
+        run: node source/scripts/build.mjs
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: source/dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
